@@ -60,12 +60,11 @@ Fa desapareixer llibre si està en aura.
 Al principi és millor matar fantasmes i buscar llibres. Això fa tindre màxims punts.
 Veure probabilitat que voldemort elimini el llibre que hi ha aprop del mag/fantasma.
 
+# PRIORITATS
+0 = Li trec el doble / Hem treuen el doble de punts.
+
+
 # PREGUNTES
-- [ ] Les caselles ocupades són els punts finals?
-- [ ] Quantes rondes esgota al fantasma resoldre encanteri?
-- [ ] Quants punts t'en portes per matar a un altre mag.
 - [ ] Pot reviure un mag?
 - [ ] Quantes rondes dura la fase de conversió?
 - [ ] Quantes rondes si l'inutilitzo si ataco a un Fantasma?
-
-- Al principi es millor buscar llibres i despres anar a morir-se per a donar els meus integrants al l'altre equip.
