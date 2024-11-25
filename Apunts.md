@@ -56,6 +56,7 @@ Fa desapareixer llibre si està en aura.
 - Pots no donar ordre. Simplement no mouret.
 - Ordres a meus jugadors de més urgent a menys.
 
+
 # ESTRATEGIES
 Al principi és millor matar fantasmes i buscar llibres. Això fa tindre màxims punts.
 Veure probabilitat que voldemort elimini el llibre que hi ha aprop del mag/fantasma.
@@ -68,3 +69,14 @@ Veure probabilitat que voldemort elimini el llibre que hi ha aprop del mag/fanta
 - [ ] Pot reviure un mag?
 - [ ] Quantes rondes dura la fase de conversió?
 - [ ] Quantes rondes si l'inutilitzo si ataco a un Fantasma?
+
+
+---
+# IMPLEMENTACIONS
+## Movements
+Tauler amb moviments per cada ronda.
+Si la posicio que s'ha determinat que és la millor, entra en conflicte --> Veure quina té menys prioritat.
+La que té menys prioritat (valor més gran) s'ha de recalcular
+- [ ] Veure com fer perque no entri en bucle infinit a l'hora de recalcular.
+
+MAX DFS = 58 (esperança de trobar algo)
