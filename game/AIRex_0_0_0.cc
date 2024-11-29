@@ -10,18 +10,6 @@
 #define iMEDIUM 1
 #define iHIGH 2
 
-/**
-
-*/
-
-/** TO-DO
-- [ ] Jugadors no agafen llibres ni ataquen directament (Es queden en la pos. previa i entren bucle)
-- [ ] El fantasma no fuig dels jugadors (hauria de tindre més prioritat)
-- [ ] Determinar quina peça té menor distancia si prioritat és la mateixa
-- [ ] SPELL NO
-*/
-
-
 struct PLAYER_NAME : public Player {
   /**
    * Factory: returns a new instance of this class.
@@ -39,34 +27,34 @@ struct PLAYER_NAME : public Player {
     // === WIZARD ===
     // -- MAG ALIAT PER SALVAR
     WIZARD_ALLIED_CLOSE = 1,
-    WIZARD_ALLIED_MID = 4,
-    WIZARD_ALLIED_FAR = 9,
+    WIZARD_ALLIED_MID = 9,
+    WIZARD_ALLIED_FAR = 171,
     // -- MAG ENEMIG --
     WIZARD_ENEMY_WIZARD_CLOSE_HIGH = 2,
-    WIZARD_ENEMY_WIZARD_CLOSE_MEDIUM = 7,
-    WIZARD_ENEMY_WIZARD_CLOSE_LOW = 28,
-    WIZARD_ENEMY_WIZARD_MID_HIGH = 13,
-    WIZARD_ENEMY_WIZARD_MID_MEDIUM = 19,
-    WIZARD_ENEMY_WIZARD_MID_LOW = 20,
-    WIZARD_ENEMY_WIZARD_FAR_HIGH = 21,
-    WIZARD_ENEMY_WIZARD_FAR_MEDIUM = 22,
-    WIZARD_ENEMY_WIZARD_FAR_LOW = 23,
+    WIZARD_ENEMY_WIZARD_CLOSE_MEDIUM = 5,
+    WIZARD_ENEMY_WIZARD_CLOSE_LOW = 3,
+    WIZARD_ENEMY_WIZARD_MID_HIGH = 10,
+    WIZARD_ENEMY_WIZARD_MID_MEDIUM = 13,
+    WIZARD_ENEMY_WIZARD_MID_LOW = 11,
+    WIZARD_ENEMY_WIZARD_FAR_HIGH = 18,
+    WIZARD_ENEMY_WIZARD_FAR_MEDIUM = 21,
+    WIZARD_ENEMY_WIZARD_FAR_LOW = 19,
     // -- FANTASMA ENEMIG --
-    WIZARD_ENEMY_GHOST_CLOSE = 3,
-    WIZARD_ENEMY_GHOST_MID = 5,
-    WIZARD_ENEMY_GHOST_FAR = 11,
+    WIZARD_ENEMY_GHOST_CLOSE = 4,
+    WIZARD_ENEMY_GHOST_MID = 12,
+    WIZARD_ENEMY_GHOST_FAR = 20,
     // -- LLIBRE --
-    WIZARD_BOOK_CLOSE = 4,
-    WIZARD_BOOK_MID = 10,
-    WIZARD_BOOK_FAR = 12,
+    WIZARD_BOOK_CLOSE = 6,
+    WIZARD_BOOK_MID = 14,
+    WIZARD_BOOK_FAR = 22,
     // -- VOLDEMORT --
     WIZARD_VOLDEMORT_CLOSE = 0,
     WIZARD_VOLDEMORT_MID = 8,
-    WIZARD_VOLDEMORT_FAR = 14,
+    WIZARD_VOLDEMORT_FAR = 16,
     // -- EMPTY --
-    WIZARD_EMPTY_CLOSE = 6,
+    WIZARD_EMPTY_CLOSE = 7,
     WIZARD_EMPTY_MID = 15,
-    WIZARD_EMPTY_FAR = 16,
+    WIZARD_EMPTY_FAR = 23,
     
     // === GHOSTS
     // --- MAG ENEMIG --
@@ -113,9 +101,18 @@ struct PLAYER_NAME : public Player {
     VOLDEMORT,
   };
 
+  struct BFSNode {
+    Pos pos;
+    int dist;
+    Dir initial_dir;
+  };
+
   vector<Dir> dirs_wizard = {Up,Down,Left,Right};
   vector<Dir> dirs_all = {Down,DR,Right,RU,Up,UL,Left,LD};
-  set<Priority> smove_forwards = {};  // FERRR OMPLIR
+  set<Priority> smove_forwards = {WIZARD_ENEMY_WIZARD_CLOSE_LOW, WIZARD_ENEMY_WIZARD_MID_LOW, WIZARD_ENEMY_WIZARD_FAR_LOW, 
+                                  WIZARD_VOLDEMORT_CLOSE, WIZARD_VOLDEMORT_MID, WIZARD_VOLDEMORT_FAR,
+                                  GHOST_ENEMY_WIZARD_CLOSE, GHOST_ENEMY_WIZARD_MID, GHOST_ENEMY_WIZARD_FAR,
+                                  GHOST_VOLDEMORT_CLOSE, GHOST_VOLDEMORT_MID, GHOST_VOLDEMORT_FAR};  // Prioritats que cal fer moviment d'allunyar-se
 
   struct Movement {
     int id = -1;  // id de l'unitat que realitza el moviment
@@ -346,129 +343,90 @@ struct PLAYER_NAME : public Player {
     else return probability_table_ghost[c][idist][iprob];
   }
 
-  // Determinar direcció més curta a una posició donat una unitat i la seva pos.
-  Dir moveTowards(const UnitType& t, const Pos& from, const Pos& to) {
-    if (t == Wizard) {
-      if (from.i < to.i) return Down;
-      else if (from.i > to.i) return Up;
-      else if (from.j < to.j) return Right;
-      else if (from.j > to.j) return Left;
-    }
-    else if (t == Ghost) {
-      if (from.i < to.i && from.j < to.j) return DR; // Down-Right
-      else if (from.i < to.i && from.j > to.j) return LD; // Down-Left
-      else if (from.i > to.i && from.j < to.j) return RU; // Up-Right
-      else if (from.i > to.i && from.j > to.j) return UL; // Up-Left
-      else if (from.i < to.i) return Down;
-      else if (from.i > to.i) return Up;
-      else if (from.j < to.j) return Right;
-      else if (from.j > to.j) return Left;
-    }
-      
-    return Dir();  // Això no passarà
-  }
-
-  // Determinar direcció oposada a una posició donat una unitat i la seva pos.
-  Dir moveForwards(const UnitType& t, const Pos& from, const Pos& danger) {
-    if (t == Wizard) {
-      if (from.i < danger.i) return Up;
-      else if (from.i > danger.i) return Down;
-      else if (from.j < danger.j) return Left;
-      else if (from.j > danger.j) return Right;
-    }
-    else if (t == Ghost) {
-      if (from.i < danger.i && from.j < danger.j) return UL; // Up-Left
-      else if (from.i < danger.i && from.j > danger.j) return RU; // Up-Right
-      else if (from.i > danger.i && from.j < danger.j) return LD; // Down-Left
-      else if (from.i > danger.i && from.j > danger.j) return DR; // Down-Right
-      else if (from.i < danger.i) return Up;
-      else if (from.i > danger.i) return Down;
-      else if (from.j < danger.j) return Left;
-      else if (from.j > danger.j) return Right;
-    }
-      
-    return Dir();  // Això no passarà
-  }
-
   // BFS per trobar elements pròxims al Mag. Hi ha limit de búsqueda.
   void wizard_bfs(const Unit& u, PQM& pqmovements, const int& max_bfs_depth) {
     VVB seen = VVB(SIZE, VB(SIZE, false));
-    queue<pair<Pos, int>> q;  // <"Posició", "Dist fins posicio">
+    queue<BFSNode> q;  // <"Posició", "Dist fins posicio">
     seen[u.pos.i][u.pos.j] = true;
-    q.push({u.pos,0});  
+    
+    // Totes les direccions que es pot moure el mag inicialment
+    for (const auto& dir : dirs_wizard) {
+      Pos new_pos = u.pos + dir;
+      if (pos_ok(new_pos) && !seen[new_pos.i][new_pos.j] && content_board[new_pos.i][new_pos.j] != WALL) {
+        seen[new_pos.i][new_pos.j] = true;
+        q.push({new_pos, 1, dir});
+      }
+    } 
 
     while (!q.empty()) {
-      Pos act = q.front().first;
-      int dist = q.front().second;
+      BFSNode node = q.front();
+      Pos act = node.pos;
+      int dist = node.dist;
+      Dir initial_dir = node.initial_dir;
       q.pop();
 
+            
+      // === BASE CASE
       if (dist>=max_bfs_depth) continue;  // He superat el maxim de búsqueda
+      // Tota la resta ho comprovo abans d'afegir
 
+      // === GENERAL CASE
+      int new_dist = dist + 1;
+      Priority priority = NOT_DEFINED;
+
+      // -- MAG ALIAT PER SALVAR --
+      if (content_board[act.i][act.j] == ALLIED) {
+        Cell temp_cell = cell(act.i, act.j);
+        Unit temp_allied_unit = unit(temp_cell.id);
+
+        if (!temp_allied_unit.is_in_conversion_process()) continue;  // No s'està convertint
+        
+        priority = calcPriority(Wizard, ALLIED, dist, 1);
+      }
+      // -- MAG ENEMIG --
+      else if (content_board[act.i][act.j] == ENEMY_WIZARD) {
+        Cell temp_cell = cell(act.i, act.j);
+        Unit temp_enemy_unit = unit(temp_cell.id);
+
+        if (temp_enemy_unit.is_in_conversion_process()) continue;  // Si s'esta transformant no m'importa
+        
+        double probability = calcProbWizards(me(), temp_enemy_unit.player);  // Jo ataco
+        priority = calcPriority(Wizard, ENEMY_WIZARD, dist, probability);
+      }
+      // -- FANTASMA ENEMIG -- 
+      else if (content_board[act.i][act.j] == ENEMY_GHOST) {
+        priority = calcPriority(Wizard, ENEMY_GHOST, dist, 1);
+      }
+      // -- LLIBRE --
+      else if (content_board[act.i][act.j] == BOOK) {
+        priority = calcPriority(Wizard, BOOK, dist, 1);
+      }
+      // -- VOLDEMORT -- 
+      else if (content_board[act.i][act.j] == VOLDEMORT) {
+        priority = calcPriority(Wizard, VOLDEMORT, dist, 0);
+      }
+      // -- EMPTY --
+      else if (content_board[act.i][act.j] == EMPTY) {
+        priority = calcPriority(Wizard, EMPTY, dist, 1);
+      }
+
+      // Crear el moviment i guardar-lo
+      Movement temp;
+      temp.id = u.id;
+      temp.prio = priority;
+      temp.p = act;
+      temp.dist = dist;
+      temp.d = initial_dir;  // Usa la dirección inicial
+      pqmovements.push(temp);
+        
+      // Continúa explorando
       random_shuffle(dirs_all.begin(), dirs_all.end());  // Aleatori perquè si.
-      
-      // Buscar en totes les direccions (Donat que no podem anar diagonal)
       for (const auto& dir : dirs_all) {
         Pos new_pos = act + dir;
-        
-        // === BASE CASE
-        if (!pos_ok(new_pos)) continue;  // No és vàlida
-        else if (seen[new_pos.i][new_pos.j]) continue;  // Ja l'he vista
-        else if (content_board[new_pos.i][new_pos.j] == WALL) continue;  // És una paret
-        seen[new_pos.i][new_pos.j] = true;
-
-        // === GENERAL CASE
-        int new_dist = dist + 1;
-        Priority priority = NOT_DEFINED;
-
-        // -- MAG ALIAT PER SALVAR --
-        if (content_board[new_pos.i][new_pos.j] == ALLIED) {
-          Cell temp_cell = cell(new_pos.i, new_pos.j);
-          Unit temp_allied_unit = unit(temp_cell.id);
-
-          if (!temp_allied_unit.is_in_conversion_process()) continue;  // No s'està convertint
-          
-          priority = calcPriority(Wizard, ALLIED, dist, 1);
+        if (pos_ok(new_pos) && !seen[new_pos.i][new_pos.j] && content_board[new_pos.i][new_pos.j] != WALL) {
+          seen[new_pos.i][new_pos.j] = true;
+          q.push({new_pos, dist + 1, initial_dir});  // Propaga la dirección inicial
         }
-        // -- MAG ENEMIG --
-        else if (content_board[new_pos.i][new_pos.j] == ENEMY_WIZARD) {
-          Cell temp_cell = cell(new_pos.i, new_pos.j);
-          Unit temp_enemy_unit = unit(temp_cell.id);
-
-          if (temp_enemy_unit.is_in_conversion_process()) continue;  // Si s'esta transformant no m'importa
-          
-          double probability = calcProbWizards(me(), temp_enemy_unit.player);  // Jo ataco
-          priority = calcPriority(Wizard, ENEMY_WIZARD, dist, probability);
-        }
-        // -- FANTASMA ENEMIG -- 
-        else if (content_board[new_pos.i][new_pos.j] == ENEMY_GHOST) {
-          priority = calcPriority(Wizard, ENEMY_GHOST, dist, 1);
-        }
-        // -- LLIBRE --
-        else if (content_board[new_pos.i][new_pos.j] == BOOK) {
-          priority = calcPriority(Wizard, BOOK, dist, 1);
-        }
-        // -- VOLDEMORT -- 
-        else if (content_board[new_pos.i][new_pos.j] == VOLDEMORT) {
-          priority = calcPriority(Wizard, VOLDEMORT, dist, 0);
-        }
-        // -- EMPTY --
-        else if (content_board[new_pos.i][new_pos.j] == EMPTY) {
-          priority = calcPriority(Wizard, EMPTY, dist, 1);
-        }
-
-        // Crear el moviment i guardar-lo
-        Movement temp;
-        temp.id = u.id;
-        temp.prio = priority;
-        temp.p = new_pos;
-        temp.dist = new_dist;
-
-        if (smove_forwards.find(priority) != smove_forwards.end()) moveForwards(Wizard, u.pos, new_pos);
-        else moveTowards(Wizard, u.pos, new_pos);
-
-        pqmovements.push(temp);
-
-        q.push({new_pos, new_dist});
       }
     }
   }
@@ -481,23 +439,24 @@ struct PLAYER_NAME : public Player {
     q.push({u.pos,0});
 
     while (!q.empty()) {
-      pair<Pos,int> act = q.front();
+      Pos act = q.front().first;
+      int dist = q.front().second;
       q.pop();
 
-      if (act.second>=max_bfs_depth) continue;
+      if (dist>=max_bfs_depth) continue;
 
       random_shuffle(dirs_all.begin(), dirs_all.end());  // Aleatori perquè si.
       for (const auto& dir : dirs_all) {
-        Pos new_pos = act.first + dir;
+        Pos new_pos = act + dir;
         
         // === BASE CASE
         if (!pos_ok(new_pos)) continue;  // No és vàlida
         else if (seen[new_pos.i][new_pos.j]) continue;  // Ja l'he vista
+        else if (content_board[new_pos.i][new_pos.j] == WALL) continue;  // És una paret
         seen[new_pos.i][new_pos.j] = true;
-        if (content_board[new_pos.i][new_pos.j] == WALL) continue;  // És una paret
 
         // === GENERAL CASE
-        int dist = act.second + 1;
+        int new_dist = dist + 1;
         Priority priority = NOT_DEFINED;
 
         // -- MAG ENEMIG --
@@ -525,7 +484,7 @@ struct PLAYER_NAME : public Player {
         temp.p = new_pos;
         pqmovements.push(temp);
 
-        q.push({new_pos, dist});
+        q.push({new_pos, new_dist});
       }
     }
   }
