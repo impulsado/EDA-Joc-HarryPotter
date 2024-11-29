@@ -15,7 +15,10 @@
 */
 
 /** TO-DO
-- [ ] Spell Fantasma 
+- [ ] Jugadors no agafen llibres ni ataquen directament (Es queden en la pos. previa i entren bucle)
+- [ ] El fantasma no fuig dels jugadors (hauria de tindre més prioritat)
+- [ ] Determinar quina peça té menor distancia si prioritat és la mateixa
+- [ ] SPELL NO
 */
 
 
@@ -37,7 +40,7 @@ struct PLAYER_NAME : public Player {
     // -- MAG ALIAT PER SALVAR
     WIZARD_ALLIED_CLOSE = 1,
     WIZARD_ALLIED_MID = 4,
-    WIZARD_ALLIED_FAR = 9,    
+    WIZARD_ALLIED_FAR = 9,
     // -- MAG ENEMIG --
     WIZARD_ENEMY_WIZARD_CLOSE_HIGH = 2,
     WIZARD_ENEMY_WIZARD_CLOSE_MEDIUM = 7,
@@ -47,41 +50,41 @@ struct PLAYER_NAME : public Player {
     WIZARD_ENEMY_WIZARD_MID_LOW = 20,
     WIZARD_ENEMY_WIZARD_FAR_HIGH = 21,
     WIZARD_ENEMY_WIZARD_FAR_MEDIUM = 22,
-    WIZARD_ENEMY_WIZARD_FAR_LOW = 23,   
+    WIZARD_ENEMY_WIZARD_FAR_LOW = 23,
     // -- FANTASMA ENEMIG --
     WIZARD_ENEMY_GHOST_CLOSE = 3,
     WIZARD_ENEMY_GHOST_MID = 5,
-    WIZARD_ENEMY_GHOST_FAR = 11,    
+    WIZARD_ENEMY_GHOST_FAR = 11,
     // -- LLIBRE --
     WIZARD_BOOK_CLOSE = 4,
     WIZARD_BOOK_MID = 10,
-    WIZARD_BOOK_FAR = 12,   
+    WIZARD_BOOK_FAR = 12,
     // -- VOLDEMORT --
     WIZARD_VOLDEMORT_CLOSE = 0,
     WIZARD_VOLDEMORT_MID = 8,
-    WIZARD_VOLDEMORT_FAR = 14,    
+    WIZARD_VOLDEMORT_FAR = 14,
     // -- EMPTY --
     WIZARD_EMPTY_CLOSE = 6,
     WIZARD_EMPTY_MID = 15,
-    WIZARD_EMPTY_FAR = 16,    
+    WIZARD_EMPTY_FAR = 16,
     
     // === GHOSTS
     // --- MAG ENEMIG --
-    GHOST_ENEMY_WIZARD_CLOSE = 10,
-    GHOST_ENEMY_WIZARD_MID = 7,
-    GHOST_ENEMY_WIZARD_FAR = 2,   
+    GHOST_ENEMY_WIZARD_CLOSE = 2,
+    GHOST_ENEMY_WIZARD_MID = 6,
+    GHOST_ENEMY_WIZARD_FAR = 10,   
     // -- LLIBRE --
-    GHOST_BOOK_CLOSE_LOW = 4,
-    GHOST_BOOK_MID = 12,
-    GHOST_BOOK_FAR = 13,    
+    GHOST_BOOK_CLOSE = 1,
+    GHOST_BOOK_MID = 5,
+    GHOST_BOOK_FAR = 9,    
     // -- VOLDEMORT --       
     GHOST_VOLDEMORT_CLOSE = 0,
-    GHOST_VOLDEMORT_MID = 8,
-    GHOST_VOLDEMORT_FAR = 14,   
+    GHOST_VOLDEMORT_MID = 4,
+    GHOST_VOLDEMORT_FAR = 8,   
     // -- EMPTY --
-    GHOST_EMPTY_CLOSE = 6,
-    GHOST_EMPTY_MID = 15,
-    GHOST_EMPTY_FAR = 16,   
+    GHOST_EMPTY_CLOSE = 3,
+    GHOST_EMPTY_MID = 7,
+    GHOST_EMPTY_FAR = 11,   
     
     // == DEFAULT 
     NOT_DEFINED = INT32_MAX,
@@ -112,16 +115,19 @@ struct PLAYER_NAME : public Player {
 
   vector<Dir> dirs_wizard = {Up,Down,Left,Right};
   vector<Dir> dirs_all = {Down,DR,Right,RU,Up,UL,Left,LD};
+  set<Priority> smove_forwards = {};  // FERRR OMPLIR
 
   struct Movement {
     int id = -1;  // id de l'unitat que realitza el moviment
     Priority prio = NOT_DEFINED;  // Prioritat de l'unitat a fer aquest moviment
     Dir d;  // Direcció que s'ha de moure l'unitat (No es fa ús en tauler de moviments)
-    Pos p;
+    Pos p;  // Posició de l'objectiu
+    int dist = INT32_MAX;  // Distància de l'objectiu
 
     bool operator< (const Movement& other) const {
-      if (prio != other.prio) return prio < other.prio;  // Menor valor de prioridad primero
-      return id < other.id;      // Menor ID primero
+      if (prio != other.prio) return prio < other.prio;  // Major prioritat primer (menor num) 
+      if (dist != other.dist) return dist < other.dist;  // Menor distancia primer
+      return id < other.id;  // Pq si.
     }
   };
 
@@ -160,7 +166,6 @@ struct PLAYER_NAME : public Player {
   PT probability_table_wizards = PT();
   PT probability_table_ghost = PT();
 
-  VI vstr = VI(4);  // Força del i-essim equip
   SI smy_units;  // Set amb les meves unitats vives
   SM smovements;  // Set amb els moviments de les meves unitats
   VVM movement_board = VVM(SIZE, VM(SIZE, Movement()));
@@ -239,7 +244,7 @@ struct PLAYER_NAME : public Player {
 
     // -- LLIBRE --
     probability_table_ghost[BOOK] = std::vector<std::vector<Priority>>(dist_ranges, std::vector<Priority>(1, NOT_DEFINED));
-    probability_table_ghost[BOOK][iCLOSE][0]  = GHOST_BOOK_CLOSE_LOW;
+    probability_table_ghost[BOOK][iCLOSE][0]  = GHOST_BOOK_CLOSE;
     probability_table_ghost[BOOK][iMID][0]    = GHOST_BOOK_MID;
     probability_table_ghost[BOOK][iFAR][0]    = GHOST_BOOK_FAR;
 
@@ -263,11 +268,6 @@ struct PLAYER_NAME : public Player {
     for (const auto& id : vtemp) smy_units.insert(id);
     int ghost_id = ghost(me());
     if (ghost_id != -1) smy_units.insert(ghost_id);
-  }
-
-  // Ficar en vector totes les forçes. Posicio iessima és la força del equip iessim.
-  void getTeamsStr() {
-    for (int i = 0; i<4; i++) vstr[i] = magic_strength(i);
   }
 
   // Retorna quin tipus d'element hi ha a aquesta posició.
@@ -298,7 +298,6 @@ struct PLAYER_NAME : public Player {
   // Inicialitzar la informació actual sobre: Meves unitats vives, Força de cada Team, Mapa.
   void getAllData() {
     getMyUnits();
-    getTeamsStr();
     getBoardData();
   }
 
@@ -328,8 +327,8 @@ struct PLAYER_NAME : public Player {
   Priority calcPriority(UnitType t, Content c, int d, double w) {
     // Convertir a rang de distancies
     int idist;
-    if (d<=CLOSE) idist = iCLOSE;
-    else if (d<=MID) idist = iMID;
+    if (d <= CLOSE) idist = iCLOSE;
+    else if (d <= MID) idist = iMID;
     else idist = iFAR;
 
     // Convertir rang probabilitats
@@ -347,43 +346,78 @@ struct PLAYER_NAME : public Player {
     else return probability_table_ghost[c][idist][iprob];
   }
 
+  // Determinar direcció més curta a una posició donat una unitat i la seva pos.
+  Dir moveTowards(const UnitType& t, const Pos& from, const Pos& to) {
+    if (t == Wizard) {
+      if (from.i < to.i) return Down;
+      else if (from.i > to.i) return Up;
+      else if (from.j < to.j) return Right;
+      else if (from.j > to.j) return Left;
+    }
+    else if (t == Ghost) {
+      if (from.i < to.i && from.j < to.j) return DR; // Down-Right
+      else if (from.i < to.i && from.j > to.j) return LD; // Down-Left
+      else if (from.i > to.i && from.j < to.j) return RU; // Up-Right
+      else if (from.i > to.i && from.j > to.j) return UL; // Up-Left
+      else if (from.i < to.i) return Down;
+      else if (from.i > to.i) return Up;
+      else if (from.j < to.j) return Right;
+      else if (from.j > to.j) return Left;
+    }
+      
+    return Dir();  // Això no passarà
+  }
+
+  // Determinar direcció oposada a una posició donat una unitat i la seva pos.
+  Dir moveForwards(const UnitType& t, const Pos& from, const Pos& danger) {
+    if (t == Wizard) {
+      if (from.i < danger.i) return Up;
+      else if (from.i > danger.i) return Down;
+      else if (from.j < danger.j) return Left;
+      else if (from.j > danger.j) return Right;
+    }
+    else if (t == Ghost) {
+      if (from.i < danger.i && from.j < danger.j) return UL; // Up-Left
+      else if (from.i < danger.i && from.j > danger.j) return RU; // Up-Right
+      else if (from.i > danger.i && from.j < danger.j) return LD; // Down-Left
+      else if (from.i > danger.i && from.j > danger.j) return DR; // Down-Right
+      else if (from.i < danger.i) return Up;
+      else if (from.i > danger.i) return Down;
+      else if (from.j < danger.j) return Left;
+      else if (from.j > danger.j) return Right;
+    }
+      
+    return Dir();  // Això no passarà
+  }
+
   // BFS per trobar elements pròxims al Mag. Hi ha limit de búsqueda.
   void wizard_bfs(const Unit& u, PQM& pqmovements, const int& max_bfs_depth) {
     VVB seen = VVB(SIZE, VB(SIZE, false));
-    queue<pair<pair<Pos, int>, Dir>> q;  // <<"Pos", "Dist fins Pos">, "Dir inicial">
+    queue<pair<Pos, int>> q;  // <"Posició", "Dist fins posicio">
     seen[u.pos.i][u.pos.j] = true;
-    
-    for (auto dir : dirs_wizard) {
-      Pos new_pos = u.pos + dir;
-
-      if (pos_ok(new_pos) && content_board[new_pos.i][new_pos.j] != WALL) {
-        seen[new_pos.i][new_pos.j] = true;
-        q.push({{new_pos,1}, dir});
-      }
-    }
-    
+    q.push({u.pos,0});  
 
     while (!q.empty()) {
-      pair<Pos, int> act = q.front().first;
-      Dir dir_ini = q.front().second;
+      Pos act = q.front().first;
+      int dist = q.front().second;
       q.pop();
 
-      if (act.second>=max_bfs_depth) continue;  // He superat el maxim de búsqueda
+      if (dist>=max_bfs_depth) continue;  // He superat el maxim de búsqueda
 
       random_shuffle(dirs_all.begin(), dirs_all.end());  // Aleatori perquè si.
       
       // Buscar en totes les direccions (Donat que no podem anar diagonal)
       for (const auto& dir : dirs_all) {
-        Pos new_pos = act.first + dir;
+        Pos new_pos = act + dir;
         
         // === BASE CASE
         if (!pos_ok(new_pos)) continue;  // No és vàlida
         else if (seen[new_pos.i][new_pos.j]) continue;  // Ja l'he vista
+        else if (content_board[new_pos.i][new_pos.j] == WALL) continue;  // És una paret
         seen[new_pos.i][new_pos.j] = true;
-        if (content_board[new_pos.i][new_pos.j] == WALL) continue;  // És una paret
 
         // === GENERAL CASE
-        int dist = act.second + 1;
+        int new_dist = dist + 1;
         Priority priority = NOT_DEFINED;
 
         // -- MAG ALIAT PER SALVAR --
@@ -426,11 +460,15 @@ struct PLAYER_NAME : public Player {
         Movement temp;
         temp.id = u.id;
         temp.prio = priority;
-        temp.d = dir_ini;
         temp.p = new_pos;
+        temp.dist = new_dist;
+
+        if (smove_forwards.find(priority) != smove_forwards.end()) moveForwards(Wizard, u.pos, new_pos);
+        else moveTowards(Wizard, u.pos, new_pos);
+
         pqmovements.push(temp);
 
-        q.push({{new_pos, dist}, dir_ini});
+        q.push({new_pos, new_dist});
       }
     }
   }
