@@ -1,3 +1,5 @@
+// g++ -std=c++17 -pthread -o tester tester.cpp
+
 #include <iostream>
 #include <vector>
 #include <thread>
@@ -8,6 +10,8 @@
 #include <filesystem>
 #include <condition_variable>
 #include <fstream>
+#include <utility> // Para std::pair
+#include <algorithm> // Para std::min_element
 
 namespace fs = std::filesystem;
 
@@ -85,8 +89,12 @@ int main(int argc, char* argv[]) {
     const int end_seed = 50;
     const int total_seeds = end_seed - start_seed + 1;
 
-    std::vector<long> scores;
-    scores.reserve(total_seeds);
+    // Vector para almacenar pares de semilla y puntuación
+    std::vector<std::pair<int, long>> seed_scores;
+    seed_scores.reserve(total_seeds);
+
+    // Vector para almacenar semillas fallidas
+    std::vector<int> failed_seeds;
 
     // Crear la carpeta general para los resultados
     fs::path general_dir = fs::path(GENERAL_TEMP_DIR);
@@ -111,13 +119,19 @@ int main(int argc, char* argv[]) {
         // Bloquear el mutex para actualizar las puntuaciones y el contador de hilos
         {
             std::lock_guard<std::mutex> lock(mtx);
-            scores.push_back(score);
+            seed_scores.emplace_back(seed, score);
+            if (score == 0) { // Condición para considerar la seed como fallida
+                failed_seeds.push_back(seed);
+            }
             active_threads--;
         }
 
         // Notificar a otros hilos que hay espacio disponible
         cv.notify_one();
     };
+
+    // Vector para almacenar threads
+    std::vector<std::thread> threads;
 
     // Lanzar hilos para cada seed
     for (int seed = start_seed; seed <= end_seed; ++seed) {
@@ -127,23 +141,65 @@ int main(int argc, char* argv[]) {
         // Incrementar el contador de hilos activos
         active_threads++;
 
-        // Lanzar un hilo en segundo plano
-        std::thread(execute_seed, seed).detach();
+        // Lanzar un hilo y almacenarlo en el vector
+        threads.emplace_back(std::thread([&execute_seed, seed]() { execute_seed(seed); }));
     }
 
-    // Esperar a que todos los hilos terminen
-    std::unique_lock<std::mutex> lock(mtx);
-    cv.wait(lock, [&]() { return active_threads == 0; });
+    // Unir todos los hilos
+    for (auto& th : threads) {
+        if (th.joinable()) {
+            th.join();
+        }
+    }
+
+    // Verificar el contenido de seed_scores para depuración
+    std::cout << "Total de semillas ejecutadas: " << seed_scores.size() << std::endl;
+    for (const auto& pair : seed_scores) {
+        std::cout << "Semilla " << pair.first << ": Puntuación " << pair.second << std::endl;
+    }
 
     // Calcular la media
     long total_score = 0;
-    for (const auto& score : scores) {
-        total_score += score;
+    for (const auto& pair : seed_scores) {
+        total_score += pair.second;
     }
-    double average = static_cast<double>(total_score) / scores.size();
+    double average = static_cast<double>(total_score) / seed_scores.size();
 
-    // Imprimir el resultado
+    // Encontrar la semilla con la puntuación mínima usando std::min_element, excluyendo fallidas si es necesario
+    std::vector<std::pair<int, long>> valid_seed_scores;
+    for (const auto& pair : seed_scores) {
+        if (pair.second > 0) { // Considerar solo semillas con puntuación válida
+            valid_seed_scores.emplace_back(pair);
+        }
+    }
+
+    if (!valid_seed_scores.empty()) {
+        auto min_pair = std::min_element(valid_seed_scores.begin(), valid_seed_scores.end(),
+            [](const std::pair<int, long>& a, const std::pair<int, long>& b) -> bool {
+                return a.second < b.second;
+            });
+        std::cout << "Semilla con la menor puntuación: " << min_pair->first
+                  << " (Puntuación: " << min_pair->second << ")" << std::endl;
+    } else {
+        std::cout << "No se encontraron semillas válidas para determinar la menor puntuación." << std::endl;
+    }
+
+    // Imprimir el resultado de la media
     std::cout << "AVG: " << average << std::endl;
+
+    // Verificar e imprimir las semillas fallidas
+    if (!failed_seeds.empty()) {
+        std::cout << "Semillas que fallaron (" << failed_seeds.size() << "): ";
+        for (size_t i = 0; i < failed_seeds.size(); ++i) {
+            std::cout << failed_seeds[i];
+            if (i != failed_seeds.size() - 1) {
+                std::cout << ", ";
+            }
+        }
+        std::cout << std::endl;
+    } else {
+        std::cout << "Todas las semillas se ejecutaron correctamente." << std::endl;
+    }
 
     // Eliminar la carpeta general y sus contenidos
     try {

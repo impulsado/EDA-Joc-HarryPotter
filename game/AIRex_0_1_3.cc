@@ -1,6 +1,6 @@
 #include "Player.hh"
 
-#define PLAYER_NAME AIRex_0_1_2
+#define PLAYER_NAME AIRex_0_1_3
 #define SIZE 60
 
 #define iCLOSE 0
@@ -11,10 +11,8 @@
 #define iHIGH 2
 
 /**
-VERSION: 0_1_2
+VERSION: 0_1_3
 IMPROVEMENTS:
-- [X] STRATEGY | Solve conflicting movements based on the dist.
-- [X] FEATURE | Invokes Spell
 
 TODO:
 - [ ] STRATEGY | Times the spell to be the last
@@ -451,7 +449,7 @@ struct PLAYER_NAME : public Player {
       else if (content_board[act.i][act.j] == ENEMY_WIZARD && !is_transforming) {
         Cell temp_cell = cell(act.i, act.j);
         Unit temp_enemy_unit = unit(temp_cell.id);
-
+        
         if (temp_enemy_unit.is_in_conversion_process()) continue;  // Si s'esta transformant no m'importa
         
         double probability = calcProbWizards(me(), temp_enemy_unit.player);  // Jo ataco
@@ -618,25 +616,43 @@ struct PLAYER_NAME : public Player {
     return solucio;
   }
 
+  bool ghostCanCastSpell(const Unit& u) {
+    if (u.rounds_pending != 0) return false;
+    if (u.next_player != -1) {
+      int rounds_since_attack = round() - u.next_player;
+      if (rounds_since_attack <= rounds_no_attack_ghost()) return false;
+    }
+    return true;
+  }
+
+  bool otherGhostsCanCast() {
+    for (int pl = 0; pl < num_players(); ++pl) {
+      if (pl == me()) continue;
+      int ghost_id = ghost(pl);
+      if (ghost_id != -1) {
+        Unit ghost_unit = unit(ghost_id);
+        if (ghost_unit.rounds_pending == 0) return true;
+      }
+    }
+    return false;
+  }
+
   // Determinar si és millor moure's o tirar spell (NOMÉS FANTASMA)
-  bool detSpellOrMove(const Unit& u, PQM& pqmovements, const int& max_bfs_depth) {
-    bool move = false;
-    
+  bool detSpellOrMove(const Unit& u, PQM& pqmovements, const int& max_bfs_depth) {    
     // === BASE CASE
     // 1. Estem en les 50 últimes rondes i no es pot tirar spell
-    if (num_rounds()-round() <= 50) move = true;
-    // 2. No puc tirar un encanteri encara
-    if (u.rounds_pending != 0) move = true;
+    if (num_rounds()-round() <= 50) return true;
 
     // === GENERAL CASE
-    if (move) ghost_bfs(u, pqmovements, max_bfs_depth);
-    else {
-      VI ingredients = spell_ingredients();
-      VI solucio = solve_spell(ingredients);
-      spell(u.id, solucio);
+    if (ghostCanCastSpell(u)) {
+        VI ingredients = spell_ingredients();
+        VI solucio = solve_spell(ingredients);
+        spell(u.id, solucio);
+        //return false; // No fa falta moures
     }
 
-    return move;
+    ghost_bfs(u, pqmovements, max_bfs_depth);
+    return true;
   }
 
   // Troba el millor moviment a l'unitat passada com a paràmetre.
@@ -689,7 +705,7 @@ struct PLAYER_NAME : public Player {
       smy_units.erase(id_actual);
       Movement best_movement = findBestMove(id_actual);
       if (best_movement.prio == GHOST_SPELL) continue;
-      smovements.insert(best_movement);
+      if (best_movement.id != -1) smovements.insert(best_movement);
     }
   }
 
