@@ -1,6 +1,6 @@
 #include "Player.hh"
 
-#define PLAYER_NAME AIRex_0_2_0
+#define PLAYER_NAME AIRex_0_2_1
 #define SIZE 60
 
 #define iCLOSE 0
@@ -15,8 +15,6 @@ VERSION: 0_2_0
 IMPROVEMENTS:
 - [X] BASE | Spell
 
-TODO:
-- [ ] STRATEGY | Implement Alpha-Beta decision making algorithm
 */
 
 struct PLAYER_NAME : public Player {
@@ -492,8 +490,8 @@ struct PLAYER_NAME : public Player {
       pqmovements.push(temp);
         
       // Continúa explorant
-      random_shuffle(dirs_all.begin(), dirs_all.end());  // Aleatori perquè si.
-      for (const auto& dir : dirs_all) {
+      random_shuffle(dirs_wizard.begin(), dirs_wizard.end());  // Aleatori perquè si.
+      for (const auto& dir : dirs_wizard) {
         Pos new_pos = act + dir;
         if (pos_ok(new_pos) && !seen[new_pos.i][new_pos.j] && content_board[new_pos.i][new_pos.j] != WALL) {
           seen[new_pos.i][new_pos.j] = true;
@@ -619,7 +617,7 @@ struct PLAYER_NAME : public Player {
   }
 
   // Determinar si és millor moure's o tirar spell (NOMÉS FANTASMA)
-  bool detSpellOrMove(const Unit& u, PQM& pqmovements, const int& max_bfs_depth) {    
+  bool detSpellOrMove(const Unit& u, PQM& pqmovements, const int& max_bfs_depth) {
     if (ghostCanCastSpell(u)) {
       VI ingredients = spell_ingredients();
       VI solucio = solve_spell(ingredients);
@@ -636,7 +634,7 @@ struct PLAYER_NAME : public Player {
     PQM possible_movements;
 
     // Determinar la distància de búsqueda
-    int max_bfs_depth = 50;
+    int max_bfs_depth = 15;
     if (max_bfs_depth>num_rounds()-round()) max_bfs_depth = num_rounds()-round();    
     
     // Determinar quins possibles moviments té la unitat
@@ -654,11 +652,13 @@ struct PLAYER_NAME : public Player {
         return best_move;
       }
       // Determinar qui està més aprop (El més lluny torna a ficar-se en el set)
+      /* AIXO PETA EL PUTO JUTGE
       else if (movement_board[best_move.p.i][best_move.p.j].id != -1 && movement_board[best_move.p.i][best_move.p.j].dist > best_move.dist) {
         smy_units.insert(movement_board[best_move.p.i][best_move.p.j].id);
         movement_board[best_move.p.i][best_move.p.j] = best_move;
         return best_move;
       }
+      */
     }
 
     // Això és moooolt dificil que passi
