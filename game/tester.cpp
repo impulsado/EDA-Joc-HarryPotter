@@ -1,4 +1,4 @@
-// g++ -std=c++17 -pthread -o tester tester.cpp
+// Compilar con: g++ -std=c++17 -pthread -o tester tester.cpp
 
 #include <iostream>
 #include <vector>
@@ -10,91 +10,120 @@
 #include <filesystem>
 #include <condition_variable>
 #include <fstream>
-#include <utility> // Para std::pair
-#include <algorithm> // Para std::min_element
+#include <utility>
+#include <algorithm>
+#include <unordered_map>
+#include <iomanip>
 
 namespace fs = std::filesystem;
 
 const int MAX_CONCURRENT_THREADS = 8;
 const std::string GENERAL_TEMP_DIR = "temp_results";
 
-long extract_score(const fs::path& res_file_path) {
-    std::ifstream infile(res_file_path);
-    if (!infile.is_open()) {
-        std::cerr << "No se pudo abrir " << res_file_path << std::endl;
-        return 0;
-    }
+struct GameResult {
+    int seed;
+    std::unordered_map<std::string, long> scores;
+    std::string winner;
+};
 
-    std::string line;
-    bool round_found = false;
-    long score = 0;
-
-    while (std::getline(infile, line)) {
-        if (line.find("round 200") != std::string::npos) {
-            round_found = true;
-            // Leer las siguientes dos líneas
-            std::getline(infile, line); // Línea intermedia
-            if (std::getline(infile, line)) { // Línea de score
-                std::istringstream iss(line);
-                std::string label;
-                iss >> label; // Leer "score"
-                if (label.find("score") != std::string::npos) {
-                    iss >> score;
-                }
-            }
-            break;
-        }
-    }
-
-    infile.close();
-
-    if (!round_found) {
-        std::cerr << "No se encontró la ronda 200 en " << res_file_path << std::endl;
-    }
-
-    return score;
-}
-
-long run_game_and_get_score(int seed, const std::string& player_name) {
+// Función corregida para extraer las puntuaciones y el ganador
+GameResult run_game_and_get_scores(int seed, const std::vector<std::string>& players) {
     // Nombre del archivo de resultados para esta semilla
     std::string res_file_name = "default.res_seed_" + std::to_string(seed);
     fs::path res_file_path = fs::path(GENERAL_TEMP_DIR) / res_file_name;
 
-    // Comando para ejecutar el juego
-    std::string command = "./Game " + player_name + " Demo Demo Demo -s " + std::to_string(seed) +
-                          " < default.cnf > " + res_file_path.string();
+    // Construir el comando con los jugadores
+    std::string command = "./Game";
+    for (const auto& player : players) {
+        command += " " + player;
+    }
+    command += " -s " + std::to_string(seed) + " < default.cnf > " + res_file_path.string();
 
     // Ejecutar el comando
     int returnCode = system(command.c_str());
     if (returnCode != 0) {
         std::cerr << "El comando para la seed " << seed << " terminó con código " << returnCode << std::endl;
-        return 0;
+        return {seed, {}, ""};
     }
 
-    // Extraer la puntuación del archivo de resultados
-    long score = extract_score(res_file_path);
+    // Extraer las puntuaciones del archivo de resultados
+    std::ifstream infile(res_file_path);
+    if (!infile.is_open()) {
+        std::cerr << "No se pudo abrir " << res_file_path << std::endl;
+        return {seed, {}, ""};
+    }
 
-    return score;
+    std::string line;
+    GameResult result;
+    result.seed = seed;
+    std::vector<long> scores;
+
+    // Buscar "round 200" y luego extraer las puntuaciones
+    while (std::getline(infile, line)) {
+        if (line.find("round 200") != std::string::npos) {
+            // Leer dos líneas más
+            std::getline(infile, line); // Línea intermedia (posiblemente en blanco)
+            if (std::getline(infile, line)) { // Línea de puntuaciones
+                std::istringstream iss(line);
+                std::string label;
+                iss >> label; // Leer "score"
+
+                // Leer las puntuaciones
+                long score;
+                while (iss >> score) {
+                    scores.push_back(score);
+                }
+
+                break;
+            }
+        }
+    }
+    infile.close();
+
+    // Verificar que se hayan leído suficientes puntuaciones
+    if (scores.size() < players.size()) {
+        std::cerr << "Número insuficiente de puntuaciones en la seed " << seed << std::endl;
+        return {seed, {}, ""};
+    }
+
+    // Asignar las puntuaciones a los jugadores en orden
+    for (size_t i = 0; i < players.size(); ++i) {
+        result.scores[players[i]] = scores[i];
+    }
+
+    // Determinar el ganador (jugador con la puntuación más alta)
+    size_t winner_index = 0;
+    long max_score = scores[0];
+    for (size_t i = 1; i < scores.size(); ++i) {
+        if (scores[i] > max_score) {
+            max_score = scores[i];
+            winner_index = i;
+        }
+    }
+    result.winner = players[winner_index];
+
+    return result;
 }
 
 int main(int argc, char* argv[]) {
-    if (argc != 2) {
-        std::cerr << "Uso: " << argv[0] << " <NombreDelPersonaje>" << std::endl;
-        return 1;
+    // Aceptar hasta 4 jugadores como argumentos
+    std::vector<std::string> players;
+    for (int i = 1; i < argc && i <= 4; ++i) {
+        players.push_back(argv[i]);
+    }
+    // Completar con "Demo" si hay menos de 4 jugadores
+    while (players.size() < 4) {
+        players.push_back("Demo");
     }
 
-    std::string player_name = argv[1];
-
+    // Ajustar el rango de semillas según tus necesidades
     const int start_seed = 0;
-    const int end_seed = 50;
+    const int end_seed = 100; // Cambiado de 1 a 50 para mayor cobertura
     const int total_seeds = end_seed - start_seed + 1;
 
-    // Vector para almacenar pares de semilla y puntuación
-    std::vector<std::pair<int, long>> seed_scores;
-    seed_scores.reserve(total_seeds);
-
-    // Vector para almacenar semillas fallidas
-    std::vector<int> failed_seeds;
+    // Vector para almacenar resultados de las partidas
+    std::vector<GameResult> game_results;
+    game_results.reserve(total_seeds);
 
     // Crear la carpeta general para los resultados
     fs::path general_dir = fs::path(GENERAL_TEMP_DIR);
@@ -114,15 +143,12 @@ int main(int argc, char* argv[]) {
 
     // Función lambda para ejecutar cada seed
     auto execute_seed = [&](int seed) -> void {
-        long score = run_game_and_get_score(seed, player_name);
+        GameResult result = run_game_and_get_scores(seed, players);
 
-        // Bloquear el mutex para actualizar las puntuaciones y el contador de hilos
+        // Bloquear el mutex para actualizar los resultados y el contador de hilos
         {
             std::lock_guard<std::mutex> lock(mtx);
-            seed_scores.emplace_back(seed, score);
-            if (score == 0) { // Condición para considerar la seed como fallida
-                failed_seeds.push_back(seed);
-            }
+            game_results.push_back(result);
             active_threads--;
         }
 
@@ -152,44 +178,74 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // Verificar el contenido de seed_scores para depuración
-    std::cout << "Total de semillas ejecutadas: " << seed_scores.size() << std::endl;
-    for (const auto& pair : seed_scores) {
-        std::cout << "Semilla " << pair.first << ": Puntuación " << pair.second << std::endl;
-    }
+    // Mapas para almacenar estadísticas
+    std::unordered_map<std::string, long> total_scores;
+    std::unordered_map<std::string, int> win_counts;
+    std::vector<int> failed_seeds;
+    int worst_game_seed = -1;
+    long worst_game_total_score = 0;
+    bool first_valid_game = true;
 
-    // Calcular la media
-    long total_score = 0;
-    for (const auto& pair : seed_scores) {
-        total_score += pair.second;
-    }
-    double average = static_cast<double>(total_score) / seed_scores.size();
+    // Procesar los resultados
+    for (const auto& result : game_results) {
+        if (result.scores.empty()) {
+            failed_seeds.push_back(result.seed);
+            continue;
+        }
+        // Actualizar puntuaciones totales y conteo de victorias
+        for (const auto& [player_name, score] : result.scores) {
+            total_scores[player_name] += score;
+        }
+        if (!result.winner.empty()) {
+            win_counts[result.winner]++;
+        }
 
-    // Encontrar la semilla con la puntuación mínima usando std::min_element, excluyendo fallidas si es necesario
-    std::vector<std::pair<int, long>> valid_seed_scores;
-    for (const auto& pair : seed_scores) {
-        if (pair.second > 0) { // Considerar solo semillas con puntuación válida
-            valid_seed_scores.emplace_back(pair);
+        // Calcular la puntuación total de la partida
+        long total_score = 0;
+        for (const auto& score_pair : result.scores) {
+            total_score += score_pair.second;
+        }
+
+        // Determinar si esta es la peor partida
+        if (first_valid_game || total_score < worst_game_total_score) {
+            worst_game_total_score = total_score;
+            worst_game_seed = result.seed;
+            first_valid_game = false;
         }
     }
 
-    if (!valid_seed_scores.empty()) {
-        auto min_pair = std::min_element(valid_seed_scores.begin(), valid_seed_scores.end(),
-            [](const std::pair<int, long>& a, const std::pair<int, long>& b) -> bool {
-                return a.second < b.second;
-            });
-        std::cout << "Semilla con la menor puntuación: " << min_pair->first
-                  << " (Puntuación: " << min_pair->second << ")" << std::endl;
-    } else {
-        std::cout << "No se encontraron semillas válidas para determinar la menor puntuación." << std::endl;
+    // Calcular promedios y winrates
+    std::unordered_map<std::string, double> avg_scores;
+    std::unordered_map<std::string, double> winrates;
+    int successful_seeds = total_seeds - failed_seeds.size();
+    for (const auto& player : players) {
+        if (successful_seeds > 0) {
+            avg_scores[player] = static_cast<double>(total_scores[player]) / successful_seeds;
+            winrates[player] = static_cast<double>(win_counts[player]) / successful_seeds * 100.0;
+        } else {
+            avg_scores[player] = 0.0;
+            winrates[player] = 0.0;
+        }
     }
 
-    // Imprimir el resultado de la media
-    std::cout << "AVG: " << average << std::endl;
+    // Mostrar resultados en forma de tabla
+    std::cout << std::fixed << std::setprecision(2);
+    std::cout << "\nResultados:\n";
+    std::cout << "Jugador\t\tAVG Score\tWinrate (%)\n";
+    for (const auto& player : players) {
+        std::cout << player << "\t\t" << avg_scores[player] << "\t\t" << winrates[player] << "%\n";
+    }
+
+    // Mostrar información de la peor partida
+    if (worst_game_seed != -1) {
+        std::cout << "\nPeor partida en seed " << worst_game_seed << " con puntuación total de " << worst_game_total_score << ".\n";
+    } else {
+        std::cout << "No se encontraron partidas válidas para determinar la peor partida.\n";
+    }
 
     // Verificar e imprimir las semillas fallidas
     if (!failed_seeds.empty()) {
-        std::cout << "Semillas que fallaron (" << failed_seeds.size() << "): ";
+        std::cout << "\nSemillas que fallaron (" << failed_seeds.size() << "): ";
         for (size_t i = 0; i < failed_seeds.size(); ++i) {
             std::cout << failed_seeds[i];
             if (i != failed_seeds.size() - 1) {
@@ -198,7 +254,7 @@ int main(int argc, char* argv[]) {
         }
         std::cout << std::endl;
     } else {
-        std::cout << "Todas las semillas se ejecutaron correctamente." << std::endl;
+        std::cout << "\nTodas las semillas se ejecutaron correctamente." << std::endl;
     }
 
     // Eliminar la carpeta general y sus contenidos

@@ -1,6 +1,6 @@
 #include "Player.hh"
 
-#define PLAYER_NAME AIRex_0_2_1
+#define PLAYER_NAME AIRex_0_2_2
 #define SIZE 60
 
 #define iCLOSE 0
@@ -64,8 +64,6 @@ struct PLAYER_NAME : public Player {
     WIZARD_EMPTY_FAR = 23,
     
     // === GHOSTS
-    // -- SPELL --
-    GHOST_SPELL = -1,  // TEST
     // -- MAG ENEMIG --
     GHOST_ENEMY_WIZARD_CLOSE = 2,
     GHOST_ENEMY_WIZARD_MID = 6,
@@ -134,7 +132,6 @@ struct PLAYER_NAME : public Player {
       return id < other.id;  // Pq si.
     }
   };
-  unordered_map<int, vector<Movement>> unit_movements;
 
   struct CompMovementPriority {
     // true: m2,m1
@@ -471,9 +468,11 @@ struct PLAYER_NAME : public Player {
         priority = calcPriority(Wizard, BOOK, dist, 1);
       }
       // -- VOLDEMORT -- 
+      /*
       else if (content_board[act.i][act.j] == VOLDEMORT) {
         priority = calcPriority(Wizard, VOLDEMORT, dist, 0);
       }
+      */
       // -- EMPTY --
       else if (content_board[act.i][act.j] == EMPTY) {
         priority = calcPriority(Wizard, EMPTY, dist, 1);
@@ -486,7 +485,6 @@ struct PLAYER_NAME : public Player {
       temp.p = act;
       temp.dist = dist;
       temp.d = initial_dir;
-      unit_movements[u.id].push_back(temp);
       pqmovements.push(temp);
         
       // Continúa explorant
@@ -552,8 +550,6 @@ struct PLAYER_NAME : public Player {
         temp.prio = priority;
         temp.d = dir;
         temp.d = bestDir(u.type, act, dir, priority, u.pos); 
-        //temp.p = new_pos;
-        unit_movements[u.id].push_back(temp);
         pqmovements.push(temp);
 
         q.push({new_pos, new_dist});
@@ -633,8 +629,9 @@ struct PLAYER_NAME : public Player {
     Unit unit_act = unit(id);
     PQM possible_movements;
 
-    // Determinar la distància de búsqueda
-    int max_bfs_depth = 15;
+    // Determinar la distncia de búsqueda
+    int max_bfs_depth = 10;
+    if (smy_units.size()<=30) max_bfs_depth = 15;
     if (max_bfs_depth>num_rounds()-round()) max_bfs_depth = num_rounds()-round();    
     
     // Determinar quins possibles moviments té la unitat
@@ -643,25 +640,35 @@ struct PLAYER_NAME : public Player {
     else detSpellOrMove(unit_act, possible_movements, max_bfs_depth);
 
     // Comprovar que el millor moviment gràcies a la prioritat
-    while (!possible_movements.empty()) {
-      Movement best_move = possible_movements.top();
-      possible_movements.pop();
-      // No esta assignada per ningú
-      if (movement_board[best_move.p.i][best_move.p.j].id == -1) {
-        movement_board[best_move.p.i][best_move.p.j] = best_move;
-        return best_move;
-      }
-      // Determinar qui està més aprop (El més lluny torna a ficar-se en el set)
-      /* AIXO PETA EL PUTO JUTGE
-      else if (movement_board[best_move.p.i][best_move.p.j].id != -1 && movement_board[best_move.p.i][best_move.p.j].dist > best_move.dist) {
-        smy_units.insert(movement_board[best_move.p.i][best_move.p.j].id);
-        movement_board[best_move.p.i][best_move.p.j] = best_move;
-        return best_move;
-      }
-      */
-    }
+    if (!possible_movements.empty()) return possible_movements.top();
 
-    // Això és moooolt dificil que passi
+    // Una aleatoria i au
+    if (unit_act.type == Wizard) {
+      for (auto d : dirs_wizard)  {
+        Pos new_pos = unit_act.pos + d;
+        if (!pos_ok(new_pos)) continue;  // No és vàlida
+        else if (movement_board[new_pos.i][new_pos.j].id != -1) continue;  // Està escollit
+        else if (content_board[new_pos.i][new_pos.j] == WALL) continue;  // És una paret
+
+        Movement temp;
+        temp.id = id;
+        temp.d = d;
+        return temp;
+      }
+    }
+    else {
+      for (auto d : dirs_all)  {
+        Pos new_pos = unit_act.pos + d;
+        if (!pos_ok(new_pos)) continue;  // No és vàlida
+        else if (movement_board[new_pos.i][new_pos.j].id != -1) continue;  // Està escollit
+        else if (content_board[new_pos.i][new_pos.j] == WALL) continue;  // És una paret
+
+        Movement temp;
+        temp.id = id;
+        temp.d = d;
+        return temp;
+      }
+    }
     return Movement();
   }
 
@@ -671,7 +678,6 @@ struct PLAYER_NAME : public Player {
       int id_actual = *smy_units.begin();
       smy_units.erase(id_actual);
       Movement best_movement = findBestMove(id_actual);
-      if (best_movement.prio == GHOST_SPELL) continue;
       if (best_movement.id != -1) smovements.insert(best_movement);
     }
   }
