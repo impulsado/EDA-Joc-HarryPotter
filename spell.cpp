@@ -7,58 +7,47 @@ typedef vector<int> VI;
  
 bool solved = false;
  
-void solve(const VI& ingredients, VI& solucio, VI& suma_grups, int i, int& sum, const int& max_sum) {
+// Añade un vector para contar los elementos en cada grupo
+void solve_spell_rec(const VI& ingredients, VI& solucio, VI& suma_grups, VI& count_grups, int i, const int& max_sum) {
     int n = ingredients.size();
- 
-    // === BASE CASE
-    if (i == n) solved = true;
+
+    // === CASO BASE
+    if (i == n) {
+        bool all_groups_valid = true;
+        for(int j = 0; j < suma_grups.size() && all_groups_valid; j++) {
+            if(suma_grups[j] != max_sum || count_grups[j] != 3) all_groups_valid = false;
+        }
+        if(all_groups_valid) solved = true;
+    }
+
     if (solved) return;
- 
-    // === GENERAL CASE
-    // 1. Determinar qui agafa el ingredient i-essim
-    // 1.1. El primer grup l'agafa
-    if (!solved && suma_grups[0] < max_sum && (suma_grups[0]+ingredients[i])<=max_sum) {
-        suma_grups[0] += ingredients[i];
-        sum -= ingredients[i];
-        solucio[i] = 0;
-        solve(ingredients, solucio, suma_grups, i+1, sum, max_sum);
-        suma_grups[0] -= ingredients[i];
-        sum += ingredients[i];
-    }
-    // 1.2. El segon grup l'agafa
-    if (!solved && suma_grups[1] < max_sum && (suma_grups[1]+ingredients[i])<=max_sum) {
-        suma_grups[1] += ingredients[i];
-        sum -= ingredients[i];
-        solucio[i] = 1;
-        solve(ingredients, solucio, suma_grups, i+1, sum, max_sum);
-        suma_grups[1] -= ingredients[i];
-        sum += ingredients[i];
-    }
-    // 1.3. El tercer grup l'agafa (Per descarte)
-    // Aqui no faig comprovacions perque m'asseguren que hi ha una solució
-    if (!solved) {
-        suma_grups[2] += ingredients[i];
-        sum -= ingredients[i];
-        solucio[i] = 2;
-        solve(ingredients, solucio, suma_grups, i+1, sum, max_sum);
-        suma_grups[2] -= ingredients[i];
-        sum += ingredients[i];
+
+    // === CASO GENERAL
+    for(int j = 0; j < suma_grups.size(); j++) {
+        if(!solved && suma_grups[j] + ingredients[i] <= max_sum && count_grups[j] < 3) {
+            suma_grups[j] += ingredients[i];
+            count_grups[j] += 1;
+            solucio[i] = j;
+            solve_spell_rec(ingredients, solucio, suma_grups, count_grups, i+1, max_sum);
+            suma_grups[j] -= ingredients[i];
+            count_grups[j] -= 1;
+        }
     }
 
     return;
 }
  
-void solve_spell(const VI& ingredients) {
+VI solve_spell(const VI& ingredients) {
     int i = 0;
     int n = ingredients.size();
-    int num_grups = 3;  // 3 grups sempre
-    VI solucio(n);
-    VI suma_grups(num_grups);
     int suma = 0;
-    for (int j = 0; j<n; j++) suma += ingredients[j];
-    solve(ingredients, solucio, suma_grups, i, suma, suma/num_grups);
-    for (int j = 0; j<n; j++) cout << solucio[j];
-    cout << endl;
+    for (int j = 0; j < n; j++) suma += ingredients[j];
+    VI solucio(n);
+    int num_grups = 5;  // Debería ser 5 grupos
+    VI suma_grups(num_grups, 0);
+    VI count_grups(num_grups, 0); // Inicializa el contador de elementos por grupo
+    solve(ingredients, solucio, suma_grups, count_grups, i, suma / num_grups);
+    return solucio;
 }
  
 int main(void) {

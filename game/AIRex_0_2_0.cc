@@ -1,6 +1,6 @@
 #include "Player.hh"
 
-#define PLAYER_NAME AIRex_0_1_3
+#define PLAYER_NAME AIRex_0_2_0
 #define SIZE 60
 
 #define iCLOSE 0
@@ -11,11 +11,11 @@
 #define iHIGH 2
 
 /**
-VERSION: 0_1_3
+VERSION: 0_2_0
 IMPROVEMENTS:
+- [X] BASE | Spell
 
 TODO:
-- [ ] STRATEGY | Times the spell to be the last
 - [ ] STRATEGY | Implement Alpha-Beta decision making algorithm
 */
 
@@ -563,60 +563,53 @@ struct PLAYER_NAME : public Player {
     }
   }
   
-  void solve_spell_rec(const VI& ingredients, VI& solucio, VI& suma_grups, int i, int max_sum) {
+  void solve_spell_rec(const VI& ingredients, VI& solucio, VI& suma_grups, VI& count_grups, int i, const int& max_sum) {
     int n = ingredients.size();
+    int n2 = suma_grups.size(); 
 
-    // Caso base
+    // === CASO BASE
     if (i == n) {
-      if (suma_grups[0] == max_sum && suma_grups[1] == max_sum && suma_grups[2] == max_sum) {
-        solved = true;
+      bool all_groups_valid = true;
+      for(int j = 0; j < n2 && all_groups_valid; j++) {
+          if(suma_grups[j] != max_sum || count_grups[j] != 3) all_groups_valid = false;
       }
-      return;
+      if(all_groups_valid) solved = true;
     }
+
     if (solved) return;
 
-    // Intentar agregar el ingrediente al grupo 0
-    if (suma_grups[0] + ingredients[i] <= max_sum) {
-      suma_grups[0] += ingredients[i];
-      solucio[i] = 0;
-      solve_spell_rec(ingredients, solucio, suma_grups, i + 1, max_sum);
-      if (solved) return;
-      suma_grups[0] -= ingredients[i];
+    // === CASO GENERAL
+    for(int j = 0; j < n2; j++) {
+      if(!solved && suma_grups[j] + ingredients[i] <= max_sum && count_grups[j] < 3) {
+        suma_grups[j] += ingredients[i];
+        count_grups[j] += 1;
+        solucio[i] = j;
+        solve_spell_rec(ingredients, solucio, suma_grups, count_grups, i+1, max_sum);
+        suma_grups[j] -= ingredients[i];
+        count_grups[j] -= 1;
+      }
     }
 
-    // Intentar agregar el ingrediente al grupo 1
-    if (suma_grups[1] + ingredients[i] <= max_sum) {
-      suma_grups[1] += ingredients[i];
-      solucio[i] = 1;
-      solve_spell_rec(ingredients, solucio, suma_grups, i + 1, max_sum);
-      if (solved) return;
-      suma_grups[1] -= ingredients[i];
-    }
-
-    // Intentar agregar el ingrediente al grupo 2
-    if (suma_grups[2] + ingredients[i] <= max_sum) {
-      suma_grups[2] += ingredients[i];
-      solucio[i] = 2;
-      solve_spell_rec(ingredients, solucio, suma_grups, i + 1, max_sum);
-      if (solved) return;
-      suma_grups[2] -= ingredients[i];
-    }
+    return;
   }
 
   VI solve_spell(const VI& ingredients) {
+    int i = 0;
     int n = ingredients.size();
+    int suma = 0;
+    for (int j = 0; j < n; j++) suma += ingredients[j];
     VI solucio(n);
-    VI suma_grups(3, 0);
-    int suma_total = 0;
-    for (int i = 0; i < n; ++i) suma_total += ingredients[i];
-    int max_sum = suma_total / 3;
-
-    solved = false;
-    solve_spell_rec(ingredients, solucio, suma_grups, 0, max_sum);
+    int num_grups = 5;
+    VI suma_grups(num_grups, 0);
+    VI count_grups(num_grups, 0);
+    solve_spell_rec(ingredients, solucio, suma_grups, count_grups, i, suma / num_grups);
     return solucio;
   }
 
+  // Comprovar si fantasma pot tirar encanteri
   bool ghostCanCastSpell(const Unit& u) {
+    if (num_rounds()-round() <= 50) return false;
+    if (round()<=50) return false;
     if (u.rounds_pending != 0) return false;
     if (u.next_player != -1) {
       int rounds_since_attack = round() - u.next_player;
@@ -625,30 +618,12 @@ struct PLAYER_NAME : public Player {
     return true;
   }
 
-  bool otherGhostsCanCast() {
-    for (int pl = 0; pl < num_players(); ++pl) {
-      if (pl == me()) continue;
-      int ghost_id = ghost(pl);
-      if (ghost_id != -1) {
-        Unit ghost_unit = unit(ghost_id);
-        if (ghost_unit.rounds_pending == 0) return true;
-      }
-    }
-    return false;
-  }
-
   // Determinar si és millor moure's o tirar spell (NOMÉS FANTASMA)
   bool detSpellOrMove(const Unit& u, PQM& pqmovements, const int& max_bfs_depth) {    
-    // === BASE CASE
-    // 1. Estem en les 50 últimes rondes i no es pot tirar spell
-    if (num_rounds()-round() <= 50) return true;
-
-    // === GENERAL CASE
     if (ghostCanCastSpell(u)) {
-        VI ingredients = spell_ingredients();
-        VI solucio = solve_spell(ingredients);
-        spell(u.id, solucio);
-        //return false; // No fa falta moures
+      VI ingredients = spell_ingredients();
+      VI solucio = solve_spell(ingredients);
+      spell(u.id, solucio);
     }
 
     ghost_bfs(u, pqmovements, max_bfs_depth);
@@ -665,17 +640,9 @@ struct PLAYER_NAME : public Player {
     if (max_bfs_depth>num_rounds()-round()) max_bfs_depth = num_rounds()-round();    
     
     // Determinar quins possibles moviments té la unitat
-    bool move = true;
     if (unit_act.type == Wizard) wizard_bfs(unit_act, possible_movements, max_bfs_depth);
     // Si és fantasma, determinar si és millor spell o moures
-    else move = detSpellOrMove(unit_act, possible_movements, max_bfs_depth);
-
-    if (!move) {
-      Movement temp;
-      temp.id = id;
-      temp.prio = GHOST_SPELL;
-      return temp;
-    }
+    else detSpellOrMove(unit_act, possible_movements, max_bfs_depth);
 
     // Comprovar que el millor moviment gràcies a la prioritat
     while (!possible_movements.empty()) {
