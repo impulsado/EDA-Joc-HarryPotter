@@ -1,7 +1,7 @@
 DUMMY_OBJ = AIDummy.o
 
 # Add here any extra .o player files you want to link to the executable
-EXTRA_OBJ = AIHarry.o AINricTRiSe2.o
+EXTRA_OBJ = AIHarry.o AIAngi222.o AILluviaVerde.o
 
 # Configuration
 OPTIMIZE = 3 # Optimization level    (0 to 3)
