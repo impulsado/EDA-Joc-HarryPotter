@@ -24,6 +24,8 @@ AIRex_0_3_4.o: AIRex_0_3_4.cc Player.hh Info.hh Settings.hh Structs.hh \
  Utils.hh Defs.hh State.hh Action.hh Random.hh Registry.hh
 AIRex_0_3_5.o: AIRex_0_3_5.cc Player.hh Info.hh Settings.hh Structs.hh \
  Utils.hh Defs.hh State.hh Action.hh Random.hh Registry.hh
+AIRex_0_3_6.o: AIRex_0_3_6.cc Player.hh Info.hh Settings.hh Structs.hh \
+ Utils.hh Defs.hh State.hh Action.hh Random.hh Registry.hh
 Action.o: Action.cc Action.hh Structs.hh Utils.hh Defs.hh
 Board.o: Board.cc Board.hh Info.hh Settings.hh Structs.hh Utils.hh \
  Defs.hh State.hh Action.hh Random.hh
