@@ -118,7 +118,7 @@ int main(int argc, char* argv[]) {
 
     // Ajustar el rango de semillas según tus necesidades
     const int start_seed = 0;
-    const int end_seed = 50; // Cambiado de 1 a 50 para mayor cobertura
+    const int end_seed = 100; // Cambiado de 1 a 50 para mayor cobertura
     const int total_seeds = end_seed - start_seed + 1;
 
     // Vector para almacenar resultados de las partidas
