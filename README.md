@@ -2,11 +2,11 @@
 
 ![Harry](/img/logo.png)
 
->[!IMPORTANT]
->❗**Finalista en el Joc**❗
-> El personatge és ``FreeAres.c``
+> [!IMPORTANT] 
+>❗**Finalista en el Joc**❗<br>
+> El personatge és ``AIFreeAres.c``
 
-[!NOTE]
+> [!NOTE]
 > Nota: 20/20
 
 ## Consideracions
