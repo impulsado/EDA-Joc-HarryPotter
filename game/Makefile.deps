@@ -1,48 +1,37 @@
-AIDemo.o: AIDemo.cc Player.hh Info.hh Settings.hh Structs.hh Utils.hh \
- Defs.hh State.hh Action.hh Random.hh Registry.hh
-AINull.o: AINull.cc Player.hh Info.hh Settings.hh Structs.hh Utils.hh \
- Defs.hh State.hh Action.hh Random.hh Registry.hh
-AIRex_0_0_0.o: AIRex_0_0_0.cc Player.hh Info.hh Settings.hh Structs.hh \
- Utils.hh Defs.hh State.hh Action.hh Random.hh Registry.hh
-AIRex_0_1_0.o: AIRex_0_1_0.cc Player.hh Info.hh Settings.hh Structs.hh \
- Utils.hh Defs.hh State.hh Action.hh Random.hh Registry.hh
-AIRex_0_1_1.o: AIRex_0_1_1.cc Player.hh Info.hh Settings.hh Structs.hh \
- Utils.hh Defs.hh State.hh Action.hh Random.hh Registry.hh
-AIRex_0_1_2.o: AIRex_0_1_2.cc Player.hh Info.hh Settings.hh Structs.hh \
- Utils.hh Defs.hh State.hh Action.hh Random.hh Registry.hh
-AIRex_0_2_2.o: AIRex_0_2_2.cc Player.hh Info.hh Settings.hh Structs.hh \
- Utils.hh Defs.hh State.hh Action.hh Random.hh Registry.hh
-AIRex_0_3_0.o: AIRex_0_3_0.cc Player.hh Info.hh Settings.hh Structs.hh \
- Utils.hh Defs.hh State.hh Action.hh Random.hh Registry.hh
-AIRex_0_3_1.o: AIRex_0_3_1.cc Player.hh Info.hh Settings.hh Structs.hh \
- Utils.hh Defs.hh State.hh Action.hh Random.hh Registry.hh
-AIRex_0_3_2.o: AIRex_0_3_2.cc Player.hh Info.hh Settings.hh Structs.hh \
- Utils.hh Defs.hh State.hh Action.hh Random.hh Registry.hh
-AIRex_0_3_3.o: AIRex_0_3_3.cc Player.hh Info.hh Settings.hh Structs.hh \
- Utils.hh Defs.hh State.hh Action.hh Random.hh Registry.hh
-AIRex_0_3_4.o: AIRex_0_3_4.cc Player.hh Info.hh Settings.hh Structs.hh \
- Utils.hh Defs.hh State.hh Action.hh Random.hh Registry.hh
-AIRex_0_3_5.o: AIRex_0_3_5.cc Player.hh Info.hh Settings.hh Structs.hh \
- Utils.hh Defs.hh State.hh Action.hh Random.hh Registry.hh
-AIRex_0_3_6.o: AIRex_0_3_6.cc Player.hh Info.hh Settings.hh Structs.hh \
- Utils.hh Defs.hh State.hh Action.hh Random.hh Registry.hh
-AIRex_0_3_7.o: AIRex_0_3_7.cc Player.hh Info.hh Settings.hh Structs.hh \
- Utils.hh Defs.hh State.hh Action.hh Random.hh Registry.hh
-AIRex_0_3_8.o: AIRex_0_3_8.cc Player.hh Info.hh Settings.hh Structs.hh \
- Utils.hh Defs.hh State.hh Action.hh Random.hh Registry.hh
-Action.o: Action.cc Action.hh Structs.hh Utils.hh Defs.hh
-Board.o: Board.cc Board.hh Info.hh Settings.hh Structs.hh Utils.hh \
- Defs.hh State.hh Action.hh Random.hh
-Game.o: Game.cc Game.hh Player.hh Info.hh Settings.hh Structs.hh Utils.hh \
- Defs.hh State.hh Action.hh Random.hh Registry.hh Board.hh
-Info.o: Info.cc Info.hh Settings.hh Structs.hh Utils.hh Defs.hh State.hh
-Main.o: Main.cc Game.hh Player.hh Info.hh Settings.hh Structs.hh Utils.hh \
- Defs.hh State.hh Action.hh Random.hh Registry.hh Board.hh
-Player.o: Player.cc Player.hh Info.hh Settings.hh Structs.hh Utils.hh \
- Defs.hh State.hh Action.hh Random.hh Registry.hh
-Random.o: Random.cc Random.hh Utils.hh Defs.hh
-Registry.o: Registry.cc Registry.hh Utils.hh Defs.hh
-Settings.o: Settings.cc Settings.hh Structs.hh Utils.hh Defs.hh
-State.o: State.cc State.hh Structs.hh Utils.hh Defs.hh Settings.hh
-Structs.o: Structs.cc Structs.hh Utils.hh Defs.hh
-Utils.o: Utils.cc Utils.hh Defs.hh
+-Wall
+-Wno-unused-variable
+-fPIC
+-O3
+-MM
+AIDemo.cc
+AINull.cc
+AIRex_0_0_0.cc
+AIRex_0_1_0.cc
+AIRex_0_1_1.cc
+AIRex_0_1_2.cc
+AIRex_0_2_2.cc
+AIRex_0_3_0.cc
+AIRex_0_3_1.cc
+AIRex_0_3_10.cc
+AIRex_0_3_11.cc
+AIRex_0_3_12.cc
+AIRex_0_3_2.cc
+AIRex_0_3_3.cc
+AIRex_0_3_4.cc
+AIRex_0_3_5.cc
+AIRex_0_3_6.cc
+AIRex_0_3_7.cc
+AIRex_0_3_8.cc
+AIRex_0_3_9.cc
+Action.cc
+Board.cc
+Game.cc
+Info.cc
+Main.cc
+Player.cc
+Random.cc
+Registry.cc
+Settings.cc
+State.cc
+Structs.cc
+Utils.cc
